@@ -1,12 +1,21 @@
 FROM ubuntu:14.04
 
-MAINTAINER Greg Taylor "greg.taylor@reddit.com"
+MAINTAINER goofyahead "goofyahead@gmail.com"
 
 # Install java8
 RUN apt-get update && apt-get install -y software-properties-common && \
     add-apt-repository -y ppa:webupd8team/java && apt-get update
 RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections
 RUN apt-get install -y oracle-java8-installer
+
+# Install curl
+RUN apt-get install -y curl
+
+# Install npm & node
+RUN curl -sL https://deb.nodesource.com/setup_6.x | bash
+RUN apt-get install -y nodejs
+
+# Install key from repo
 
 # Install Deps
 RUN dpkg --add-architecture i386 && apt-get update && \
@@ -15,7 +24,7 @@ RUN dpkg --add-architecture i386 && apt-get update && \
 
 # Install Android SDK
 RUN cd /opt && wget --output-document=android-sdk.tgz \
-    --quiet http://dl.google.com/android/android-sdk_r24.4.1-linux.tgz && \
+    --quiet http://dl.google.com/android/android-sdk_r25.0.2-linux.tgz && \
     tar xzf android-sdk.tgz && rm -f android-sdk.tgz && \
     chown -R root.root android-sdk-linux
 
@@ -33,7 +42,7 @@ ENV PATH ${PATH}:${ANDROID_HOME}/tools:${ANDROID_HOME}/platform-tools
 COPY tools /opt/tools
 ENV PATH ${PATH}:/opt/tools
 RUN ["/opt/tools/android-accept-licenses.sh", "android update sdk --all --no-ui --filter \
-     platform-tools,android-23,android-24,build-tools-23.0.3,sys-img-armeabi-v7a-google_apis-23,extra-android-m2repository,extra-google-m2repository"]
+     platform-tools,android-25,build-tools-25.0.2,sys-img-armeabi-v7a-google_apis-25,extra-android-m2repository,extra-google-m2repository"]
 
 RUN which adb
 RUN which android
@@ -51,15 +60,5 @@ RUN echo "no" | android create avd \
 # Cleaning
 RUN apt-get clean
 
-# Create workspace
-RUN mkdir -p /drone/src/github.com/reddit/
-
-# Initialize dependencies
-COPY Frontpage-Android /drone/src/github.com/reddit/Frontpage-Android
-RUN cd /drone/src/github.com/reddit/Frontpage-Android && ./gradlew clean && cd .. && rm -rf Frontpage-Android
-
 # Start up the emulator
 RUN ["/bin/bash", "-c", "SHELL=/bin/bash emulator -avd nexus5_23 -no-skin -no-audio -no-window & /opt/tools/android-wait-for-emulator.sh"]
-
-# Set working directory
-WORKDIR /drone/src/github.com/reddit/
